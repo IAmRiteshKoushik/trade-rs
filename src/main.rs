@@ -1,107 +1,6 @@
-use std::collections::HashMap;
-
-#[derive(Debug)]
-enum BidOrAsk {
-    Bid,
-    Ask,
-}
-
-#[derive(Debug)]
-struct Orderbook {
-    asks: HashMap<Price, Limit>,
-    bids: HashMap<Price, Limit>,
-}
-
-impl Orderbook {
-    fn new() -> Orderbook {
-        Orderbook {
-            asks: HashMap::new(),
-            bids: HashMap::new(),
-        }
-    }
-
-    // A limit order will sit in the order book but a market order would not
-    fn add_order(&mut self, price: f64, order: Order) {
-        match order.bid_or_ask {
-            BidOrAsk::Bid => {
-                let price = Price::new(price);
-                let limit = self.bids.get_mut(&price);
-
-                // Here, we are matching bigs against the limit and if a match
-                // is not found, then a new limit is created and the orders are
-                // added under that price limit
-                match self.bids.get_mut(&price) {
-                    // If limit already exists then proceed to add the order
-                    // without creating a new limit
-                    Some(limit) => limit.add_order(order),
-                    // println!("Already got a limit!"),
-                    None => {
-                        let mut limit = Limit::new(price);
-                        limit.add_order(order);
-                        self.bids.insert(price, limit);
-                    }
-                }
-            }
-            BidOrAsk::Ask => {}
-        }
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
-struct Price {
-    integral: u64,
-    fractional: u64,
-    scalar: u64,
-}
-
-impl Price {
-    fn new(price: f64) -> Price {
-        let scalar = 100000;
-        // Type-casting works with the "as" keyword. Here, we are only
-        // interested in the integral part of the float
-        let integral = price as u64;
-        let fractional = ((price % 1.0) * scalar as f64) as u64;
-        Price {
-            scalar,
-            integral,
-            fractional,
-        }
-    }
-}
-
-#[derive(Debug)]
-struct Limit {
-    price: Price,
-    orders: Vec<Order>,
-}
-
-impl Limit {
-    fn new(price: Price) -> Limit {
-        Limit {
-            price,
-            orders: Vec::new(),
-        }
-    }
-
-    fn add_order(&mut self, order: Order) {
-        self.orders.push(order);
-    }
-}
-
-#[derive(Debug)]
-struct Order {
-    size: f64,
-    bid_or_ask: BidOrAsk,
-}
-
-impl Order {
-    fn new(bid_or_ask: BidOrAsk, size: f64) -> Order {
-        // If naming and arguments are same then you need not
-        // explicitly declare them inside the struct and just get away
-        // with doing it as follows
-        Order { bid_or_ask, size }
-    }
-}
+mod matching_engine;
+use matching_engine::engine::{MatchingEngine, TradingPair};
+use matching_engine::orderbook::{BidOrAsk, Order, Orderbook};
 
 fn main() {
     // Testing it out
@@ -119,8 +18,31 @@ fn main() {
     // Throws that already got a limit nad does not add it
     orderbook.add_order(4.4, buy_order_from_bob);
 
-    // limit.add_order(buy_order);
-    // limit.add_order(sell_order);
+    let sell_order = Order::new(BidOrAsk::Ask, 6.5);
+    orderbook.add_order(20.0, sell_order);
 
-    println!("{:?}", orderbook);
+    // You can pretty-print using "#" instead of printing everything in a single
+    // line. Usually, Debug statements need to be printed to a log file hence
+    // a single line is required, but for printing to stdout, we can afford
+    // to see a preetier format.
+    // -----------------------------
+    // println!("{:#?}", orderbook);
+    // println!("{:?}", orderbook);
+
+    // Creating a new market and adding a trading pair
+    let mut engine = MatchingEngine::new();
+    let pair = TradingPair::new("BTC".to_string(), "USDC".to_string());
+    engine.add_new_market(pair.clone());
+
+    let buy_order = Order::new(BidOrAsk::Bid, 6.5);
+    // ------ PANIC ----------
+    // let eth_pair = TradingPair::new("ETH".to_string(), "USD".to_string());
+    // Because place_limit_order has a return type that we do not care about
+    // we are advised to either declare an escape variable like _ or panic
+    // ------ PANIC ----------
+    // engine
+    //     .place_limit_order(eth_pair, 10.000, buy_order)
+    //     .unwrap();
+
+    engine.place_limit_order(pair, 10.000, buy_order).unwrap();
 }
