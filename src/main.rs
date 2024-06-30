@@ -18,9 +18,25 @@ impl Orderbook {
             bids: HashMap::new(),
         }
     }
+
+    // A limit order will sit in the order book but a market order would not
+    fn add_order(&mut self, price: f64, order: Order) {
+        match order.bid_or_ask {
+            BidOrAsk::Bid => {
+                let price = Price::new(price);
+                let limit = self.bids.get_mut(&price);
+
+                match limit {
+                    Some(limit) => println!("Already got a limit!"),
+                    None => println!("need to create a new limit!"),
+                }
+            }
+            BidOrAsk::Ask => {}
+        }
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 struct Price {
     integral: u64,
     fractional: u64,
