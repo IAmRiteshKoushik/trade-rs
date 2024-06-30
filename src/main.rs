@@ -6,6 +6,7 @@ enum BidOrAsk {
     Ask,
 }
 
+#[derive(Debug)]
 struct Orderbook {
     asks: HashMap<Price, Limit>,
     bids: HashMap<Price, Limit>,
@@ -26,9 +27,19 @@ impl Orderbook {
                 let price = Price::new(price);
                 let limit = self.bids.get_mut(&price);
 
-                match limit {
-                    Some(limit) => println!("Already got a limit!"),
-                    None => println!("need to create a new limit!"),
+                // Here, we are matching bigs against the limit and if a match
+                // is not found, then a new limit is created and the orders are
+                // added under that price limit
+                match self.bids.get_mut(&price) {
+                    // If limit already exists then proceed to add the order
+                    // without creating a new limit
+                    Some(limit) => limit.add_order(order),
+                    // println!("Already got a limit!"),
+                    None => {
+                        let mut limit = Limit::new(price);
+                        limit.add_order(order);
+                        self.bids.insert(price, limit);
+                    }
                 }
             }
             BidOrAsk::Ask => {}
@@ -36,7 +47,7 @@ impl Orderbook {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 struct Price {
     integral: u64,
     fractional: u64,
@@ -65,9 +76,9 @@ struct Limit {
 }
 
 impl Limit {
-    fn new(price: f64) -> Limit {
+    fn new(price: Price) -> Limit {
         Limit {
-            price: Price::new(price),
+            price,
             orders: Vec::new(),
         }
     }
@@ -94,10 +105,22 @@ impl Order {
 
 fn main() {
     // Testing it out
-    let mut limit = Limit::new(65.3);
-    let buy_order = Order::new(BidOrAsk::Bid, 5.5);
-    let sell_order = Order::new(BidOrAsk::Ask, 2.45);
-    limit.add_order(buy_order);
-    limit.add_order(sell_order);
-    println!("{:?}", limit);
+    // let mut limit = Limit::new(65.3);
+
+    let buy_order_from_alice = Order::new(BidOrAsk::Bid, 5.5);
+    let buy_order_from_bob = Order::new(BidOrAsk::Bid, 2.45);
+
+    // let sell_order = Order::new(BidOrAsk::Ask, 2.45);
+
+    let mut orderbook = Orderbook::new();
+
+    // Adds it as limit does not exist
+    orderbook.add_order(4.4, buy_order_from_alice);
+    // Throws that already got a limit nad does not add it
+    orderbook.add_order(4.4, buy_order_from_bob);
+
+    // limit.add_order(buy_order);
+    // limit.add_order(sell_order);
+
+    println!("{:?}", orderbook);
 }
