@@ -1,6 +1,23 @@
+use std::collections::HashMap;
+
+#[derive(Debug)]
 enum BidOrAsk {
     Bid,
     Ask,
+}
+
+struct Orderbook {
+    asks: HashMap<Price, Limit>,
+    bids: HashMap<Price, Limit>,
+}
+
+impl Orderbook {
+    fn new() -> Orderbook {
+        Orderbook {
+            asks: HashMap::new(),
+            bids: HashMap::new(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -12,12 +29,11 @@ struct Price {
 
 impl Price {
     fn new(price: f64) -> Price {
-        let scalar = 100_000;
-        let integral = price as u64; // Casting a float -> int (only integral)
+        let scalar = 100000;
+        // Type-casting works with the "as" keyword. Here, we are only
+        // interested in the integral part of the float
+        let integral = price as u64;
         let fractional = ((price % 1.0) * scalar as f64) as u64;
-        // Taking module by 1.0 to find the fractional part
-        // Then scaling it up using the scalar variable for a precision
-        // Finally casting it as an unsigned integer
         Price {
             scalar,
             integral,
@@ -26,13 +42,26 @@ impl Price {
     }
 }
 
+#[derive(Debug)]
 struct Limit {
-    // f64 has got problems with hashing functions hence a custom implementation
-    // of the price structure is more suitable
-    // price: f64,
     price: Price,
+    orders: Vec<Order>,
 }
 
+impl Limit {
+    fn new(price: f64) -> Limit {
+        Limit {
+            price: Price::new(price),
+            orders: Vec::new(),
+        }
+    }
+
+    fn add_order(&mut self, order: Order) {
+        self.orders.push(order);
+    }
+}
+
+#[derive(Debug)]
 struct Order {
     size: f64,
     bid_or_ask: BidOrAsk,
@@ -40,11 +69,19 @@ struct Order {
 
 impl Order {
     fn new(bid_or_ask: BidOrAsk, size: f64) -> Order {
+        // If naming and arguments are same then you need not
+        // explicitly declare them inside the struct and just get away
+        // with doing it as follows
         Order { bid_or_ask, size }
     }
 }
 
 fn main() {
-    let price = Price::new(50.5);
-    println!("{:?}", price);
+    // Testing it out
+    let mut limit = Limit::new(65.3);
+    let buy_order = Order::new(BidOrAsk::Bid, 5.5);
+    let sell_order = Order::new(BidOrAsk::Ask, 2.45);
+    limit.add_order(buy_order);
+    limit.add_order(sell_order);
+    println!("{:?}", limit);
 }
